@@ -12,49 +12,86 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|unique:users',
-            'password' => 'required|string|min:6|confirmed',
-        ]);
+        
+        try{
+            $request->validate([
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|unique:users',
+                'password' => 'required|string|min:6|confirmed',
+            ]);
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
 
-        $token = $user->createToken('auth_token')->plainTextToken;
+            $token = $user->createToken('auth_token')->plainTextToken;            
 
-        return response()->json([
-            'message' => 'User registered successfully',
-            'user' => $user,
-            'token' => $token,
-        ], 201);
+            $data = [
+                'user' => $user,
+                'token' => $token,
+            ];
+    
+            return response()->json([
+                'status' => 'Success',
+                'success' => 1,
+                'message' => 'Register successful',
+                'data' => $data,
+            ]);
+
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => 'Error',
+                'success' => 0,
+                'message' => 'Error Login Failed : '.$th,
+                'data' => "",
+            ], 400);
+        }
     }
 
     public function login(Request $request)
     {
-        $request->validate([
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            throw ValidationException::withMessages([
-                'email' => ['The provided credentials are incorrect.'],
+        try{
+            $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
             ]);
+    
+            $user = User::where('email', $request->email)->first();
+    
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                throw ValidationException::withMessages([
+                    'email' => ['The provided credentials are incorrect.'],
+                ]);
+            }
+    
+            $token = $user->createToken('auth_token')->plainTextToken;
+            
+            User::where('email', $request->email)->update([
+                'remember_token' => $token,
+            ]);
+
+            $data = [
+                'user' => $user,
+                'token' => $token,
+            ];
+    
+            return response()->json([
+                'status' => 'Success',
+                'success' => 1,
+                'message' => 'Login successful',
+                'data' => $data,
+            ]);
+
+        } catch (\Throwable $th) {
+            return response()->json([
+                'status' => 'Error',
+                'success' => 0,
+                'message' => 'Error Login Failed : '.$th,
+                'data' => "",
+            ], 400);
         }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'message' => 'Login successful',
-            'user' => $user,
-            'token' => $token,
-        ]);
     }
 
     public function logout(Request $request)
