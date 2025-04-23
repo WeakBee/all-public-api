@@ -14,14 +14,22 @@ class AuthController extends Controller
     {
         
         try{
-            $request->validate([
-                'name' => 'required|string|max:255',
+            $validator = \Validator::make($request->all(), [
+                'username' => 'required|string|max:255',
                 'email' => 'required|string|email|unique:users',
-                'password' => 'required|string|min:6|confirmed',
+                'password' => 'required|string|min:6',
             ]);
+            if ($validator->fails()){
+                return response()->json([
+                    'status' => 'Error',
+                    'success' => 0,
+                    'message' => 'Data tidak lengkap',
+                    'data' => $validator->errors()->all(),
+                ], 400);
+            }
 
             $user = User::create([
-                'name' => $request->name,
+                'username' => $request->username,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
             ]);
@@ -44,26 +52,37 @@ class AuthController extends Controller
             return response()->json([
                 'status' => 'Error',
                 'success' => 0,
-                'message' => 'Error Login Failed : '.$th,
-                'data' => "",
-            ], 400);
+                'message' => 'Error Register Failed',
+                'data' => $th,
+            ], 500);
         }
     }
 
     public function login(Request $request)
     {
         try{
-            $request->validate([
+            $validator = \Validator::make($request->all(), [
                 'email' => 'required|email',
                 'password' => 'required',
             ]);
+            if ($validator->fails()){
+                return response()->json([
+                    'status' => 'Error',
+                    'success' => 0,
+                    'message' => 'Data tidak lengkap',
+                    'data' => $validator->errors()->all(),
+                ], 400);
+            }
     
             $user = User::where('email', $request->email)->first();
     
             if (!$user || !Hash::check($request->password, $user->password)) {
-                throw ValidationException::withMessages([
-                    'email' => ['The provided credentials are incorrect.'],
-                ]);
+                return response()->json([
+                    'status' => 'Error',
+                    'success' => 0,
+                    'message' => 'Wrong Email or Password',
+                    'data' => 'Wrong Email or Password',
+                ], 400);
             }
     
             $token = $user->createToken('auth_token')->plainTextToken;
@@ -90,7 +109,7 @@ class AuthController extends Controller
                 'success' => 0,
                 'message' => 'Error Login Failed : '.$th,
                 'data' => "",
-            ], 400);
+            ], 500);
         }
     }
 
